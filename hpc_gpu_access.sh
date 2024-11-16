@@ -26,7 +26,7 @@
 
 ### Set the job name
 ### ADD HERE THE NAME OF THE JOB
-#BSUB -J <JOB_NAME>
+#BSUB -J <YourJobName>
 
 ### Request the number of CPU cores
 # For GPUs with multiple GPUs per node, adjust -n accordingly
@@ -40,6 +40,7 @@
 
 ### Set walltime limit: hh:mm
 # Maximum 24 hours for GPU queues
+# 
 #BSUB -W 00:10
 
 ### Request memory per core
@@ -48,8 +49,8 @@
 #BSUB -R "rusage[mem=10GB]"
 
 ### Set email notifications (optional)
-### REPLAE WITH YOUR OWN EMAIL
-#BSUB -u <YOUR_EMAIL>
+### REPLACE WITH YOUR OWN EMAIL
+#BSUB -u <YourEmail>
 
 ### Enable email notifications at job start and completion
 #BSUB -B
@@ -76,7 +77,7 @@ selected_queues=($(echo "$LSB_QUEUE"))
 # Since LSF directives are processed before the script runs, we need another way
 # to ensure only one queue is selected. We'll count the number of uncommented queues.
 
-queue_count=$(grep -c '^#BSUB -q ' train_hpc.sh)
+queue_count=$(grep -c '^#BSUB -q ' hpc_gpu_access.sh)
 
 if [ "$queue_count" -ne 1 ]; then
     echo "Error: Please uncomment exactly one queue in the job script."
@@ -125,12 +126,12 @@ module load mpi/5.0.5-gcc-14.2.0-binutils-2.43
 # =============================================================================
 
 # Define variables
-ENV_NAME="kantodex-classifier"
-ENV_YML="environment.yml"
-REQUIREMENTS_TXT="requirements.txt"
-MINICONDA_DIR="$HOME/miniconda3"
-MINICONDA_INSTALLER="Miniconda3-latest-Linux-x86_64.sh"
-MINICONDA_URL="https://repo.anaconda.com/miniconda/$MINICONDA_INSTALLER"
+ENV_NAME="dl"
+# ENV_YML="environment.yml"
+# REQUIREMENTS_TXT="requirements.txt"
+# MINICONDA_DIR="$HOME/miniconda3"
+# MINICONDA_INSTALLER="Miniconda3-latest-Linux-x86_64.sh"
+# MINICONDA_URL="https://repo.anaconda.com/miniconda/$MINICONDA_INSTALLER"
 
 # Function to check if a command exists
 command_exists() {
@@ -234,16 +235,16 @@ install_additional_packages
 # Training Execution
 # =============================================================================
 
-echo "=== Starting Training ==="
+echo "=== Starting executing ... ==="
 
 # Navigate to the directory containing train.py if not already there
 # Uncomment and modify the following line if necessary
 # cd /path/to/your/project
 
-# Execute the training script
-python3 train.py
+# Execute the script of interest
+python3 YourPythonScript.py
 
-echo "=== Training Completed ==="
+echo "=== Script executed sucessfully ==="
 
 # =============================================================================
 # Final Steps
