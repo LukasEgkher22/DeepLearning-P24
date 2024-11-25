@@ -381,7 +381,7 @@ class BigBirdEmbeddingsForCEHR(nn.Module):
 
         return embeddings
 
-
+'''
 class MambaEmbeddingsForCEHR(nn.Module):
     """Construct the embeddings from concept, token_type, etc., embeddings."""
 
@@ -491,4 +491,92 @@ class MambaEmbeddingsForCEHR(nn.Module):
 
         embeddings = self.dropout(embeddings)
 
-        return self.LayerNorm(embeddings)
+        return self.LayerNorm(embeddings)'''
+
+class MambaEmbeddingsForCEHR(nn.Module):
+    """Embeddings class for handling structured time-series data."""
+
+    def __init__(
+        self,
+        config: MambaConfig,
+        type_vocab_size: int = 9,
+        time_embeddings_size: int = 32,
+        static_embeddings_size: int = 16,
+        layer_norm_eps: float = 1e-12,
+        hidden_dropout_prob: float = 0.1,
+    ) -> None:
+        super().__init__()
+        self.type_vocab_size = type_vocab_size
+        self.layer_norm_eps = layer_norm_eps
+        self.hidden_dropout_prob = hidden_dropout_prob
+        self.hidden_size = config.hidden_size
+
+        # Embedding layers
+        self.ts_value_embeddings = nn.Linear(
+            config.ts_values_dim, config.hidden_size
+        )
+        self.ts_indicator_embeddings = nn.Linear(
+            config.ts_indicators_dim, config.hidden_size
+        )
+        self.time_embeddings = TimeEmbeddingLayer(
+            embedding_size=time_embeddings_size,
+            is_time_delta=True,
+        )
+        self.static_embeddings = nn.Linear(
+            config.static_dim, static_embeddings_size
+        )
+
+        # Integration layers
+        self.concat_layer = nn.Linear(
+            config.hidden_size + time_embeddings_size + static_embeddings_size,
+            config.hidden_size,
+        )
+
+        # Normalization and dropout
+        self.tanh = nn.Tanh()
+        self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=self.layer_norm_eps)
+        self.dropout = nn.Dropout(self.hidden_dropout_prob)
+
+    def forward(
+        self,
+        ts_values: torch.Tensor,
+        ts_indicators: torch.Tensor,
+        ts_times: torch.Tensor,
+        static: torch.Tensor,
+    ) -> torch.Tensor:
+        """Compute embeddings from structured data.
+
+        Parameters
+        ----------
+        ts_values : torch.Tensor
+            Time-series values (features over time).
+        ts_indicators : torch.Tensor
+            Binary indicators for features/events.
+        ts_times : torch.Tensor
+            Time stamps corresponding to the time-series data.
+        static : torch.Tensor
+            Static features that do not vary over time.
+
+        Returns
+        -------
+        torch.Tensor
+            Final embeddings.
+        """
+        # Compute embeddings
+        ts_values_embeds = self.ts_value_embeddings(ts_values)
+        ts_indicators_embeds = self.ts_indicator_embeddings(ts_indicators)
+        time_embeds = self.time_embeddings(ts_times)
+        static_embeds = self.static_embeddings(static)
+
+        # Combine embeddings
+        combined_embeds = torch.cat(
+            (ts_values_embeds, ts_indicators_embeds, time_embeds, static_embeds),
+            dim=-1,
+        )
+
+        # Transform and normalize
+        transformed_embeds = self.tanh(self.concat_layer(combined_embeds))
+        transformed_embeds = self.dropout(transformed_embeds)
+        final_embeddings = self.LayerNorm(transformed_embeds)
+
+        return final_embeddings

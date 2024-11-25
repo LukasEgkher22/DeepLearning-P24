@@ -98,24 +98,10 @@ def load_pretrain_data(
         Pretraining data
 
     """
-    #sequence_path = join(data_dir, sequence_file)
-    #id_path = join(data_dir, id_file)
-
-    if not os.path.exists(data_file):
-        raise FileNotFoundError(f"Sequence file not found: {data_file}")
-
-    #if not os.path.exists(id_path):
-    #    raise FileNotFoundError(f"ID file not found: {id_path}")
-
-    # Loading with pandas directly might fail
-    #data = pl.read_parquet(sequence_path).to_pandas()
-    #with open(id_path, "rb") as file:
-    #    patient_ids = pickle.load(file)
-
-    # load data from path
-    data = pd.read_csv(data_file, sep=";")
-    return data
-    #return data.loc[data["patient_id"].isin(patient_ids["pretrain"])]
+    base_path_new = f"{base_path}/split_{split_index}"
+    train_pair, val_data, test_data = load_pad_separate(
+        dataset_id, base_path_new, split_index
+    )
 
 def load_finetune_data(
     data_dir: str,

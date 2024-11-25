@@ -17,11 +17,9 @@ pip install pyarrow (for concatenating the data)
 # Run main function from EHR_Mamba
 python pretrain.py --model_type = ehr_mamba 
 
-python pretrain.py \
+python cli.py \
   --model_type ehr_mamba \
   --exp_name test_Lukas \
   --config_dir odyssey/models/configs \
-  --data_dir <DATA_DIR> \
-  --vocab_dir NEEDED \
-  --tokenizer_type not_needed_now \
+  --data_dir P12data/split_1 \
   --checkpoint_dir Lukas_checkpoints

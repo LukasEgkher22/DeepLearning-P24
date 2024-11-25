@@ -1,4 +1,9 @@
-P12data/
+split_1
+split_2
+split_3
+split_4
+split_5
 Output/
-README.md
 venv/
+MAMBA/data_merged.csv
+__pycache__/

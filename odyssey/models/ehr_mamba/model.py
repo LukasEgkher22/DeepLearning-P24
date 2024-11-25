@@ -1,5 +1,5 @@
 """Mamba model."""
-
+from __future__ import annotations
 from typing import Any, Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -21,7 +21,6 @@ from transformers.models.mamba.modeling_mamba import (
     MambaCausalLMOutput,
     MambaForCausalLM,
 )
-
 from odyssey.models.ehr_mamba.mamba_utils import (
     MambaForMultiHeadSequenceClassification,
     MambaForSequenceClassification,
@@ -35,7 +34,7 @@ class MambaPretrain(pl.LightningModule):
 
     def __init__(
         self,
-        vocab_size: int,
+        #vocab_size: int,
         embedding_size: int = 768,
         time_embeddings_size: int = 32,
         visit_order_size: int = 3,
@@ -48,13 +47,13 @@ class MambaPretrain(pl.LightningModule):
         conv_kernel: int = 4,
         learning_rate: float = 5e-5,
         dropout_prob: float = 0.1,
-        padding_idx: int = 0,
-        cls_idx: int = 5,
+        #padding_idx: int = 0,
+        #cls_idx: int = 5,
         use_mambapy: bool = False,
     ):
         super().__init__()
 
-        self.vocab_size = vocab_size
+        #self.vocab_size = vocab_size
         self.embedding_size = embedding_size
         self.time_embeddings_size = time_embeddings_size
         self.visit_order_size = visit_order_size
@@ -67,28 +66,28 @@ class MambaPretrain(pl.LightningModule):
         self.conv_kernel = conv_kernel
         self.learning_rate = learning_rate
         self.dropout_prob = dropout_prob
-        self.padding_idx = padding_idx
-        self.cls_idx = cls_idx
+        #self.padding_idx = padding_idx
+        #self.cls_idx = cls_idx
         self.use_mambapy = use_mambapy
 
         self.config = MambaConfig(
-            vocab_size=self.vocab_size,
+            #vocab_size=self.vocab_size,
             hidden_size=self.embedding_size,
             state_size=self.state_size,
             num_hidden_layers=self.num_hidden_layers,
             expand=self.expand,
             conv_kernel=self.conv_kernel,
-            pad_token_id=self.padding_idx,
-            bos_token_id=self.cls_idx,
-            eos_token_id=self.padding_idx,
+            #pad_token_id=self.padding_idx,
+            #bos_token_id=self.cls_idx,
+            #eos_token_id=self.padding_idx,
             use_mambapy=self.use_mambapy,
         )
         self.embeddings = MambaEmbeddingsForCEHR(
             config=self.config,
             type_vocab_size=self.type_vocab_size,
-            max_num_visits=self.max_num_visits,
+            #max_num_visits=self.max_num_visits,
             time_embeddings_size=self.time_embeddings_size,
-            visit_order_size=self.visit_order_size,
+            #visit_order_size=self.visit_order_size,
             hidden_dropout_prob=self.dropout_prob,
         )
         # Initialize weights and apply final processing
@@ -210,7 +209,7 @@ class MambaPretrain(pl.LightningModule):
 
     def configure_optimizers(
         self,
-    ) -> Tuple[list[Any], list[dict[str, SequentialLR | str]]]:
+    ) -> Tuple[list[Any], list[dict[str, SequentialLR | str]]]: # new ) -> Tuple[list[Any], list[Dict[str, Union[SequentialLR, str]]]]: 
         """Configure optimizers and learning rate scheduler."""
         optimizer = AdamW(
             self.parameters(),
