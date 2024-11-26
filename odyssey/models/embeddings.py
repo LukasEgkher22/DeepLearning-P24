@@ -500,7 +500,7 @@ class MambaEmbeddingsForCEHR(nn.Module):
         self,
         config: MambaConfig,
         type_vocab_size: int = 9,
-        time_embeddings_size: int = 32,
+        time_embeddings_size: int = 207, #32,
         static_embeddings_size: int = 16,
         layer_norm_eps: float = 1e-12,
         hidden_dropout_prob: float = 0.1,

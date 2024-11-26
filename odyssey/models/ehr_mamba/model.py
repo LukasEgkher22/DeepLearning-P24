@@ -50,6 +50,9 @@ class MambaPretrain(pl.LightningModule):
         #padding_idx: int = 0,
         #cls_idx: int = 5,
         use_mambapy: bool = False,
+        ts_values_dim: int = 207,
+        ts_indicators_dim: int = 207,
+        static_dim: int = 8,
     ):
         super().__init__()
 
@@ -69,6 +72,9 @@ class MambaPretrain(pl.LightningModule):
         #self.padding_idx = padding_idx
         #self.cls_idx = cls_idx
         self.use_mambapy = use_mambapy
+        self.ts_values_dim = ts_values_dim
+        self.ts_indicators_dim = ts_indicators_dim
+        self.static_dim = static_dim
 
         self.config = MambaConfig(
             #vocab_size=self.vocab_size,
@@ -81,6 +87,10 @@ class MambaPretrain(pl.LightningModule):
             #bos_token_id=self.cls_idx,
             #eos_token_id=self.padding_idx,
             use_mambapy=self.use_mambapy,
+            ts_values_dim = self.ts_values_dim,
+            ts_indicators_dim = self.ts_indicators_dim,
+            static_dim = self.static_dim,
+
         )
         self.embeddings = MambaEmbeddingsForCEHR(
             config=self.config,
@@ -116,31 +126,50 @@ class MambaPretrain(pl.LightningModule):
 
     def forward(
         self,
-        inputs: Tuple[
-            torch.Tensor,
-            torch.Tensor,
-            torch.Tensor,
-            torch.Tensor,
+        # input: Tuple[
+        #     torch.Tensor,
+        #     torch.Tensor,
+        #     torch.Tensor,
+        #     torch.Tensor,
+        #     torch.Tensor,
+        #     torch.Tensor,
+        # ],
+        # labels: Optional[torch.Tensor] = None,
+        # output_hidden_states: Optional[bool] = False,
+        # return_dict: Optional[bool] = True,
+        x: Tuple[
             torch.Tensor,
             torch.Tensor,
         ],
-        labels: Optional[torch.Tensor] = None,
+        static: torch.Tensor,
+        time: torch.Tensor,
+        sensor_mask: torch.Tensor,
+        delta: torch.Tensor,
         output_hidden_states: Optional[bool] = False,
         return_dict: Optional[bool] = True,
+        **kwargs,
     ) -> Union[Tuple[torch.Tensor, ...], MambaCausalLMOutput]:
         """Forward pass for the model."""
-        concept_ids, type_ids, time_stamps, ages, visit_orders, visit_segments = inputs
+        #concept_ids, type_ids, time_stamps, ages, visit_orders, visit_segments = input
+        ts_values, labels = x
+        ts_indicators = sensor_mask
+
+
         inputs_embeds = self.embeddings(
-            input_ids=concept_ids,
-            token_type_ids_batch=type_ids,
-            time_stamps=time_stamps,
-            ages=ages,
-            visit_orders=visit_orders,
-            visit_segments=visit_segments,
+            #input_ids=concept_ids,
+            #token_type_ids_batch=type_ids,
+            #time_stamps=time_stamps,
+            #ages=ages,
+            #visit_orders=visit_orders,
+            #visit_segments=visit_segments,
+            ts_values=ts_values,
+            ts_indicators=ts_indicators,
+            ts_times=time,
+            static=static,
         )
 
-        if labels is None:
-            labels = concept_ids
+        # if labels is None:
+        #     labels = concept_ids
 
         return self.model(
             inputs_embeds=inputs_embeds,
@@ -151,20 +180,27 @@ class MambaPretrain(pl.LightningModule):
 
     def training_step(self, batch: Dict[str, Any], batch_idx: int) -> Any:
         """Train model on training dataset."""
-        inputs = (
-            batch["concept_ids"],
-            batch["type_ids"],
-            batch["time_stamps"],
-            batch["ages"],
-            batch["visit_orders"],
-            batch["visit_segments"],
+        # inputs = (
+        #     batch["concept_ids"],
+        #     batch["type_ids"],
+        #     batch["time_stamps"],
+        #     batch["ages"],
+        #     batch["visit_orders"],
+        #     batch["visit_segments"],
+        #       )
+        x = (
+            batch["ts_values"],
+            batch["ts_indicators"],
+            batch["ts_times"],
+            batch["static"],
         )
         labels = batch["labels"]
 
         # Ensure use of mixed precision
         with autocast():
             loss = self(
-                inputs,
+                #inputs,
+                x,
                 labels=labels,
                 return_dict=True,
             ).loss
@@ -180,20 +216,27 @@ class MambaPretrain(pl.LightningModule):
 
     def validation_step(self, batch: Dict[str, Any], batch_idx: int) -> Any:
         """Evaluate model on validation dataset."""
-        inputs = (
-            batch["concept_ids"],
-            batch["type_ids"],
-            batch["time_stamps"],
-            batch["ages"],
-            batch["visit_orders"],
-            batch["visit_segments"],
+        # inputs = (
+        #     batch["concept_ids"],
+        #     batch["type_ids"],
+        #     batch["time_stamps"],
+        #     batch["ages"],
+        #     batch["visit_orders"],
+        #     batch["visit_segments"],
+        #       )
+        x = (
+            batch["ts_values"],
+            batch["ts_indicators"],
+            batch["ts_times"],
+            batch["static"],
         )
         labels = batch["labels"]
 
         # Ensure use of mixed precision
         with autocast():
             loss = self(
-                inputs,
+                #inputs,
+                x,
                 labels=labels,
                 return_dict=True,
             ).loss

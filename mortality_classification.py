@@ -15,7 +15,10 @@ from models.early_stopper import EarlyStopping
 from models.deep_set_attention import DeepSetAttentionModel
 from models.grud import GRUDModel
 from models.ip_nets import InterpolationPredictionModel
+
+# extra imports
 from odyssey.models.ehr_mamba.model import MambaPretrain
+from typing import Tuple
 
 
 def train_test(
@@ -164,9 +167,12 @@ def train(
                 times = times.to(device)
                 mask = mask.to(device)
                 delta = delta.to(device)
+        
+            if model_type == "mamba":
+                data = [data, labels]
 
             optimizer.zero_grad()
-
+            
             predictions = model(
                 x=data, static=static, time=times, sensor_mask=mask, delta=delta
             )
