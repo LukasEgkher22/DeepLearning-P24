@@ -566,7 +566,9 @@ class MambaEmbeddingsForCEHR(nn.Module):
         ts_values_embeds = self.ts_value_embeddings(ts_values)
         ts_indicators_embeds = self.ts_indicator_embeddings(ts_indicators)
         time_embeds = self.time_embeddings(ts_times)
+        time_embeds = time_embeds.permute(0, 2, 1)
         static_embeds = self.static_embeddings(static)
+        static_embeds = static_embeds.unsqueeze(1).repeat(1, time_embeds.size(1), 1)
 
         # Combine embeddings
         combined_embeds = torch.cat(

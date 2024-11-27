@@ -154,7 +154,7 @@ def core_function(
         if model_type == "mamba":
             model_settings.update({
                 "embedding_size": 768,
-                "time_embeddings_size": 32,
+                "time_embeddings_size": 215,
                 "visit_order_size": 3,
                 "type_vocab_size": 9,
                 "max_seq_length": 2048,

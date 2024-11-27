@@ -15,6 +15,7 @@ from models.early_stopper import EarlyStopping
 from models.deep_set_attention import DeepSetAttentionModel
 from models.grud import GRUDModel
 from models.ip_nets import InterpolationPredictionModel
+from torch.nn.utils.rnn import pad_sequence
 
 # extra imports
 from odyssey.models.ehr_mamba.model import MambaPretrain
