@@ -34,8 +34,9 @@ class MambaPretrain(pl.LightningModule):
 
     def __init__(
         self,
+        ts_values_dim: int,
         #vocab_size: int,
-        embedding_size: int = 768,
+        embedding_size: int = 223,
         time_embeddings_size: int = 37,
         visit_order_size: int = 3,
         type_vocab_size: int = 9,
@@ -50,8 +51,6 @@ class MambaPretrain(pl.LightningModule):
         #padding_idx: int = 0,
         #cls_idx: int = 5,
         use_mambapy: bool = False,
-        ts_values_dim: int = 215,
-        ts_indicators_dim: int = 215,
         static_dim: int = 8,
     ):
         super().__init__()
@@ -73,7 +72,6 @@ class MambaPretrain(pl.LightningModule):
         #self.cls_idx = cls_idx
         self.use_mambapy = use_mambapy
         self.ts_values_dim = ts_values_dim
-        self.ts_indicators_dim = ts_indicators_dim
         self.static_dim = static_dim
 
         self.config = MambaConfig(
@@ -88,7 +86,6 @@ class MambaPretrain(pl.LightningModule):
             #eos_token_id=self.padding_idx,
             use_mambapy=self.use_mambapy,
             ts_values_dim = self.ts_values_dim,
-            ts_indicators_dim = self.ts_indicators_dim,
             static_dim = self.static_dim,
 
         )

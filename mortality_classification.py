@@ -135,7 +135,9 @@ def train(
         )
     elif model_type == "mamba":
         model = MambaPretrain(
-            #**model_args
+            ts_values_dim = max_seq_length,
+            time_embeddings_size = sensor_count,
+            static_dim = static_size
         )
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
@@ -160,6 +162,7 @@ def train(
         # training step
         model.train().to(device)  # sets training mode
         loss_list = []
+        i = 0
         for batch in tqdm.tqdm(train_dataloader, total=len(train_dataloader)):
             data, times, static, labels, mask, delta = batch
             if model_type != "grud":
@@ -186,6 +189,8 @@ def train(
             loss_list.append(loss.item())
             loss.backward()
             optimizer.step()
+            i += 1
+            print("Iteration: {i} done")
         accum_loss = np.mean(loss_list)
 
         # validation step

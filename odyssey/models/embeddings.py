@@ -35,7 +35,7 @@ class TimeEmbeddingLayer(nn.Module):
         time_stamps_expanded = time_stamps.unsqueeze(-1)
         next_input = time_stamps_expanded * self.w + self.phi
 
-        return torch.sin(next_input)
+        return torch.sin(next_input).permute(0, 2, 1)
 
 
 class VisitEmbedding(nn.Module):
@@ -499,8 +499,8 @@ class MambaEmbeddingsForCEHR(nn.Module):
     def __init__(
         self,
         config: MambaConfig,
+        time_embeddings_size: int, #32,
         type_vocab_size: int = 9,
-        time_embeddings_size: int = 207, #32,
         static_embeddings_size: int = 16,
         layer_norm_eps: float = 1e-12,
         hidden_dropout_prob: float = 0.1,
@@ -516,7 +516,7 @@ class MambaEmbeddingsForCEHR(nn.Module):
             config.ts_values_dim, config.hidden_size
         )
         self.ts_indicator_embeddings = nn.Linear(
-            config.ts_indicators_dim, config.hidden_size
+            config.ts_values_dim, config.hidden_size
         )
         self.time_embeddings = TimeEmbeddingLayer(
             embedding_size=time_embeddings_size,
@@ -528,7 +528,7 @@ class MambaEmbeddingsForCEHR(nn.Module):
 
         # Integration layers
         self.concat_layer = nn.Linear(
-            config.hidden_size + time_embeddings_size + static_embeddings_size,
+            2*config.hidden_size + time_embeddings_size + static_embeddings_size,
             config.hidden_size,
         )
 
@@ -564,11 +564,11 @@ class MambaEmbeddingsForCEHR(nn.Module):
         """
         # Compute embeddings
         ts_values_embeds = self.ts_value_embeddings(ts_values)
-        ts_indicators_embeds = self.ts_indicator_embeddings(ts_indicators)
+        ts_indicators_embeds = self.ts_value_embeddings(ts_indicators)
         time_embeds = self.time_embeddings(ts_times)
-        time_embeds = time_embeds.permute(0, 2, 1)
+        #time_embeds = time_embeds.permute(0, 2, 1)
         static_embeds = self.static_embeddings(static)
-        static_embeds = static_embeds.unsqueeze(1).repeat(1, time_embeds.size(1), 1)
+        static_embeds = static_embeds.unsqueeze(1).repeat(1, time_embeds.size(1), 1) # I do not think this is a correct solution, it just solves our problem
 
         # Combine embeddings
         combined_embeds = torch.cat(
