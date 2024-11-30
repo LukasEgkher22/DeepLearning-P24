@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 
 def truncate_to_longest_item_in_batch(data, times, mask, delta):
-    data = data.permute((0, 2, 1))  # (N, T, F)
+    # data = data.permute((0, 2, 1))  # (N, T, F)
     mask = mask.permute((0, 2, 1))
     delta = delta.permute((0, 2, 1))
     col_mask = mask.sum(-1)

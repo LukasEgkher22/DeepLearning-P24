@@ -220,8 +220,7 @@ def train(
                     predictions = predictions.squeeze(-1)
                 else:
                     predictions = predictions.logits
-                print(predictions.shape)
-                print(predictions_list.shape)
+                    predictions = predictions.squeeze()
                 predictions_list = torch.cat(
                     (predictions_list, predictions.cpu()), dim=0
                 )
