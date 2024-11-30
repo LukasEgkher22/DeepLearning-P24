@@ -6,6 +6,7 @@ from typing import Any, Optional
 import torch
 from torch import nn
 from transformers import BigBirdConfig, MambaConfig
+from models.regular_transformer import masked_max_pooling, Encoder, PositionalEncodingTF
 
 
 class TimeEmbeddingLayer(nn.Module):
@@ -35,7 +36,7 @@ class TimeEmbeddingLayer(nn.Module):
         time_stamps_expanded = time_stamps.unsqueeze(-1)
         next_input = time_stamps_expanded * self.w + self.phi
 
-        return torch.sin(next_input).permute(0, 2, 1)
+        return torch.sin(next_input).permute(0,2,1)
 
 
 class VisitEmbedding(nn.Module):
@@ -495,11 +496,11 @@ class MambaEmbeddingsForCEHR(nn.Module):
 
 class MambaEmbeddingsForCEHR(nn.Module):
     """Embeddings class for handling structured time-series data."""
-
+    '''
     def __init__(
         self,
         config: MambaConfig,
-        time_embeddings_size: int, #32,
+        time_embeddings_size: int = 37,
         type_vocab_size: int = 9,
         static_embeddings_size: int = 16,
         layer_norm_eps: float = 1e-12,
@@ -581,4 +582,95 @@ class MambaEmbeddingsForCEHR(nn.Module):
         transformed_embeds = self.dropout(transformed_embeds)
         final_embeddings = self.LayerNorm(transformed_embeds)
 
+        return final_embeddings
+'''
+    def __init__(
+        self,
+        device="cuda",
+        pooling="mean",
+        num_classes=2,
+        sensors_count=37,
+        static_count=8,
+        layers=1,
+        heads=1,
+        dropout=0.2,
+        attn_dropout=0.2,
+        **kwargs
+    ):
+        super().__init__()
+
+        self.pooling = pooling
+        self.device = device
+        self.sensors_count = sensors_count
+        self.static_count = static_count
+
+        self.sensor_axis_dim_in = 2 * self.sensors_count
+
+        self.sensor_axis_dim = self.sensor_axis_dim_in
+        if self.sensor_axis_dim % 2 != 0:
+            self.sensor_axis_dim += 1
+
+        self.static_out = self.static_count + 4
+
+        self.attn_layers = Encoder(
+            dim=self.sensor_axis_dim,
+            depth=layers,
+            heads=heads,
+            attn_dropout=attn_dropout,
+            ff_dropout=dropout,
+        )
+
+        self.sensor_embedding = nn.Linear(self.sensor_axis_dim_in, self.sensor_axis_dim)
+
+        self.static_embedding = nn.Linear(self.static_count, self.static_out)
+        self.nonlinear_merger = nn.Linear(
+            self.sensor_axis_dim + self.static_out,
+            self.sensor_axis_dim + self.static_out,
+        )
+        # self.classifier = nn.Linear(
+        #     self.sensor_axis_dim + self.static_out, num_classes
+        # )
+
+        self.pos_encoder = PositionalEncodingTF(self.sensor_axis_dim)
+
+    def forward(self, ts_values, static, ts_times, ts_indicators, **kwargs):
+
+        x_time = torch.clone(ts_values)  # (N, F, T)
+        x_time = torch.permute(x_time, (0, 2, 1))  # (N, T, F)
+        mask = (
+            torch.count_nonzero(x_time, dim=2)
+        ) > 0  # mask for sum of all sensors for each person/at each timepoint
+
+        # add indication for missing sensor values
+        x_sensor_mask = torch.clone(ts_indicators)  # (N, F, T)
+        x_sensor_mask = torch.permute(x_sensor_mask, (0, 2, 1))  # (N, T, F)
+        x_time = torch.cat([x_time, x_sensor_mask], axis=2)  # (N, T, 2F) #Binary
+
+        # make sensor embeddings
+        x_time = self.sensor_embedding(x_time)  # (N, T, F)
+
+        # add positional encodings
+        pe = self.pos_encoder(ts_times).to(self.device)  # taken from RAINDROP, (N, T, pe)
+        x_time = torch.add(x_time, pe)  # (N, T, F) (N, F)
+
+        # run  attention
+        x_time = self.attn_layers(x_time, mask=mask)
+
+        # if self.pooling == "mean":
+        #     x_time = masked_mean_pooling(x_time, mask)
+        # elif self.pooling == "median":
+        #     x_time = torch.median(x_time, dim=1)[0]
+        # elif self.pooling == "sum":
+        #     x_time = torch.sum(x_time, dim=1)  # sum on time
+        # elif self.pooling == "max":
+        x_time = masked_max_pooling(x_time, mask)
+
+        # concatenate poolingated attented tensors
+        static = self.static_embedding(static)
+        x_merged = torch.cat((x_time, static), axis=1)
+
+        nonlinear_merged = self.nonlinear_merger(x_merged).relu()
+        final_embeddings = nonlinear_merged.unsqueeze(0)
+
+        # classify!
         return final_embeddings

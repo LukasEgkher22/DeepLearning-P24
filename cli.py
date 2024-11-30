@@ -153,25 +153,25 @@ def core_function(
         # Add Mamba-specific parameters
         if model_type == "mamba":
             model_settings.update({
-                "embedding_size": 768,
-                "time_embeddings_size": 215,
-                "visit_order_size": 3,
-                "type_vocab_size": 9,
-                "max_seq_length": 2048,
-                "max_num_visits": 512,
-                "state_size": 16,
-                "num_hidden_layers": 32,
-                "expand": 2,
+                # "embedding_size": 768,
+                # "time_embeddings_size": 215,
+                # "visit_order_size": 3,
+                # "type_vocab_size": 9,
+                # "max_seq_length": 2048,
+                # "max_num_visits": 512,
+                # "state_size": 16,
+                # "num_hidden_layers": 32,
+                # "expand": 2,
                 "conv_kernel": 4,
                 "dropout_prob": 0.1,
                 "learning_rate": 5e-5,
-                "use_mambapy": False,
+                # "use_mambapy": False,
             })
-            model_settings["finetune"] = {
-                "learning_rate": 5e-5,
-                "classifier_dropout": 0.1,
-                "multi_head": False,
-            }
+            # model_settings["finetune"] = {
+            #     "learning_rate": 5e-5,
+            #     "classifier_dropout": 0.1,
+            #     "multi_head": False,
+            # }
 
         with open(f"{run_path}/model_settings.json", "w") as fp:
             json.dump(model_settings, fp)

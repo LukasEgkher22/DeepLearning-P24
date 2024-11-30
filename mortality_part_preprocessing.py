@@ -182,7 +182,7 @@ class PairedDataset(Dataset):
     @staticmethod
     def paired_collate_fn_truncate(batch):
         data, times, static, labels, mask, delta = PairedDataset.paired_collate_fn(batch)
-        # data, times, mask, delta = truncate_to_longest_item_in_batch(data, times, mask, delta)
+        data, times, mask, delta = truncate_to_longest_item_in_batch(data, times, mask, delta)
         return data, times, static, labels, mask, delta
 
 

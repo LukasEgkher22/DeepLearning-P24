@@ -34,14 +34,13 @@ class MambaPretrain(pl.LightningModule):
 
     def __init__(
         self,
-        ts_values_dim: int,
         #vocab_size: int,
-        embedding_size: int = 223,
+        embedding_size: int = 86,
         time_embeddings_size: int = 37,
-        visit_order_size: int = 3,
-        type_vocab_size: int = 9,
-        max_num_visits: int = 512,
-        max_seq_length: int = 2048,
+        # visit_order_size: int = 3,
+        # type_vocab_size: int = 9,
+        # max_num_visits: int = 512,
+        # max_seq_length: int = 2048,
         state_size: int = 16,
         num_hidden_layers: int = 32,
         expand: int = 2,
@@ -55,13 +54,13 @@ class MambaPretrain(pl.LightningModule):
     ):
         super().__init__()
 
-        #self.vocab_size = vocab_size
+        # self.vocab_size = vocab_size
         self.embedding_size = embedding_size
         self.time_embeddings_size = time_embeddings_size
-        self.visit_order_size = visit_order_size
-        self.type_vocab_size = type_vocab_size
-        self.max_num_visits = max_num_visits
-        self.max_seq_length = max_seq_length
+        # self.visit_order_size = visit_order_size
+        # self.type_vocab_size = type_vocab_size
+        # self.max_num_visits = max_num_visits
+        # self.max_seq_length = max_seq_length
         self.state_size = state_size
         self.num_hidden_layers = num_hidden_layers
         self.expand = expand
@@ -71,7 +70,6 @@ class MambaPretrain(pl.LightningModule):
         #self.padding_idx = padding_idx
         #self.cls_idx = cls_idx
         self.use_mambapy = use_mambapy
-        self.ts_values_dim = ts_values_dim
         self.static_dim = static_dim
 
         self.config = MambaConfig(
@@ -85,15 +83,16 @@ class MambaPretrain(pl.LightningModule):
             #bos_token_id=self.cls_idx,
             #eos_token_id=self.padding_idx,
             use_mambapy=self.use_mambapy,
-            ts_values_dim = self.ts_values_dim,
+            time_embeddings_size = self.time_embeddings_size,
             static_dim = self.static_dim,
 
         )
         self.embeddings = MambaEmbeddingsForCEHR(
             config=self.config,
-            type_vocab_size=self.type_vocab_size,
+            #type_vocab_size=self.type_vocab_size,
             #max_num_visits=self.max_num_visits,
-            time_embeddings_size=self.time_embeddings_size,
+            censor_count=self.time_embeddings_size,
+            static_count = self.static_dim,
             #visit_order_size=self.visit_order_size,
             hidden_dropout_prob=self.dropout_prob,
         )
@@ -164,7 +163,7 @@ class MambaPretrain(pl.LightningModule):
             ts_times=time,
             static=static,
         )
-
+        #labels = labels.unsqueeze(-1).repeat(1, 37)
         # if labels is None:
         #     labels = concept_ids
 

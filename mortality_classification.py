@@ -135,7 +135,7 @@ def train(
         )
     elif model_type == "mamba":
         model = MambaPretrain(
-            ts_values_dim = max_seq_length,
+            # ts_values_dim = max_seq_length,
             time_embeddings_size = sensor_count,
             static_dim = static_size
         )
@@ -156,13 +156,13 @@ def train(
         train_log.write(
             ",".join(["epoch", "train_loss", "val_loss", "val_roc_auc_score"]) + "\n"
         )
-
+    
+    i = 0
     for epoch in range(epochs):
 
         # training step
         model.train().to(device)  # sets training mode
         loss_list = []
-        i = 0
         for batch in tqdm.tqdm(train_dataloader, total=len(train_dataloader)):
             data, times, static, labels, mask, delta = batch
             if model_type != "grud":
@@ -180,19 +180,20 @@ def train(
             predictions = model(
                 x=data, static=static, time=times, sensor_mask=mask, delta=delta
             )
-            if type(predictions) == tuple:
-                predictions, recon_loss = predictions
+            if model_type != "mamba":
+                if type(predictions) == tuple:
+                    predictions, recon_loss = predictions
+                else:
+                    recon_loss = 0
+                predictions = predictions.squeeze(-1)
+                loss = criterion(predictions.cpu(), labels) + recon_loss
             else:
-                recon_loss = 0
-            predictions = predictions.squeeze(-1)
-            loss = criterion(predictions.cpu(), labels) + recon_loss
+                predictions, loss = predictions.logits, predictions.loss
             loss_list.append(loss.item())
             loss.backward()
             optimizer.step()
-            i += 1
-            print("Iteration: {i} done")
         accum_loss = np.mean(loss_list)
-
+        print("First epoch done.")
         # validation step
         model.eval().to(device)
         labels_list = torch.LongTensor([])
@@ -207,12 +208,20 @@ def train(
                     times = times.to(device)
                     mask = mask.to(device)
                     delta = delta.to(device)
+                
+                if model_type == "mamba":
+                    data = [data, labels]
                 predictions = model(
                     x=data, static=static, time=times, sensor_mask=mask, delta=delta
                 )
-                if type(predictions) == tuple:
-                    predictions, _ = predictions
-                predictions = predictions.squeeze(-1)
+                if model_type != "mamba":
+                    if type(predictions) == tuple:
+                        predictions, _ = predictions
+                    predictions = predictions.squeeze(-1)
+                else:
+                    predictions = predictions.logits
+                print(predictions.shape)
+                print(predictions_list.shape)
                 predictions_list = torch.cat(
                     (predictions_list, predictions.cpu()), dim=0
                 )
