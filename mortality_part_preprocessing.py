@@ -8,7 +8,7 @@ from torch.utils.data import Dataset
 
 
 def truncate_to_longest_item_in_batch(data, times, mask, delta):
-    # data = data.permute((0, 2, 1))  # (N, T, F)
+    data = data.permute((0, 2, 1))  # (N, T, F)
     mask = mask.permute((0, 2, 1))
     delta = delta.permute((0, 2, 1))
     col_mask = mask.sum(-1)
@@ -208,6 +208,7 @@ class MortalityDataset(Dataset):
                 self.label_array,
                 self.delta_array,
             ) = MortalityDataset.preprocess_sensor_readings(max_length, obs)
+            self.data_array = self.data_array.permute((0, 2, 1))
             self.sensor_mask_array = self.sensor_mask_array.permute((0, 2, 1))
             self.delta_array = self.delta_array.permute((0, 2, 1))
             print("shape of active data = " + str(np.shape(self.data_array)))

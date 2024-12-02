@@ -165,11 +165,12 @@ def core_function(
                 "conv_kernel": 4,
                 "dropout_prob": 0.1,
                 "learning_rate": 5e-5,
+                "classifier_dropout": 0.1,
                 # "use_mambapy": False,
             })
             # model_settings["finetune"] = {
             #     "learning_rate": 5e-5,
-            #     "classifier_dropout": 0.1,
+                # "classifier_dropout": 0.1,
             #     "multi_head": False,
             # }
 

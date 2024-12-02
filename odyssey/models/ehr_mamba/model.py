@@ -27,6 +27,7 @@ from odyssey.models.ehr_mamba.mamba_utils import (
     MambaSequenceClassifierOutput,
 )
 from odyssey.models.embeddings import MambaEmbeddingsForCEHR
+from odyssey.models.ehr_mamba.mamba_utils import MambaClassificationHead
 
 
 class MambaPretrain(pl.LightningModule):
@@ -34,73 +35,89 @@ class MambaPretrain(pl.LightningModule):
 
     def __init__(
         self,
-        #vocab_size: int,
+        vocab_size: int = 86,
+        classifier_dropout: float = 0.1,
         embedding_size: int = 86,
-        time_embeddings_size: int = 37,
+        # time_embeddings_size: int = 37,
         # visit_order_size: int = 3,
         # type_vocab_size: int = 9,
         # max_num_visits: int = 512,
         # max_seq_length: int = 2048,
-        state_size: int = 16,
-        num_hidden_layers: int = 32,
-        expand: int = 2,
-        conv_kernel: int = 4,
-        learning_rate: float = 5e-5,
-        dropout_prob: float = 0.1,
+        # state_size: int = 16,
+        # num_hidden_layers: int = 32,
+        # expand: int = 2,
+        # conv_kernel: int = 4,
+        # learning_rate: float = 5e-5,
+        # dropout_prob: float = 0.1,
         #padding_idx: int = 0,
         #cls_idx: int = 5,
-        use_mambapy: bool = False,
+        # use_mambapy: bool = False,
+        num_labels: int = 2,
+        sensor_count: int = 37,
         static_dim: int = 8,
     ):
         super().__init__()
 
-        # self.vocab_size = vocab_size
+        self.vocab_size = vocab_size
         self.embedding_size = embedding_size
-        self.time_embeddings_size = time_embeddings_size
+        # self.time_embeddings_size = time_embeddings_size
         # self.visit_order_size = visit_order_size
         # self.type_vocab_size = type_vocab_size
         # self.max_num_visits = max_num_visits
         # self.max_seq_length = max_seq_length
-        self.state_size = state_size
-        self.num_hidden_layers = num_hidden_layers
-        self.expand = expand
-        self.conv_kernel = conv_kernel
-        self.learning_rate = learning_rate
-        self.dropout_prob = dropout_prob
+        # self.state_size = state_size
+        # self.num_hidden_layers = num_hidden_layers
+        # self.expand = expand
+        # self.conv_kernel = conv_kernel
+        # self.learning_rate = learning_rate
+        # self.dropout_prob = dropout_prob
         #self.padding_idx = padding_idx
         #self.cls_idx = cls_idx
-        self.use_mambapy = use_mambapy
+        # self.use_mambapy = use_mambapy
+        self.num_labels = num_labels
+        self.classifier_dropout = classifier_dropout
+        self.sensor_count = sensor_count
         self.static_dim = static_dim
 
         self.config = MambaConfig(
-            #vocab_size=self.vocab_size,
+            vocab_size=self.vocab_size,
             hidden_size=self.embedding_size,
-            state_size=self.state_size,
-            num_hidden_layers=self.num_hidden_layers,
-            expand=self.expand,
-            conv_kernel=self.conv_kernel,
+            # state_size=self.state_size,
+            # num_hidden_layers=self.num_hidden_layers,
+            # expand=self.expand,
+            # conv_kernel=self.conv_kernel,
             #pad_token_id=self.padding_idx,
             #bos_token_id=self.cls_idx,
             #eos_token_id=self.padding_idx,
-            use_mambapy=self.use_mambapy,
-            time_embeddings_size = self.time_embeddings_size,
+            # use_mambapy=self.use_mambapy,
+            # time_embeddings_size = self.time_embeddings_size,
+            num_labels = self.num_labels,
+            classifier_dropout = self.classifier_dropout,
+            sensor_count = self.sensor_count,
             static_dim = self.static_dim,
-
         )
         self.embeddings = MambaEmbeddingsForCEHR(
             config=self.config,
             #type_vocab_size=self.type_vocab_size,
             #max_num_visits=self.max_num_visits,
-            censor_count=self.time_embeddings_size,
+            sensor_count=self.sensor_count,
             static_count = self.static_dim,
-            #visit_order_size=self.visit_order_size,
-            hidden_dropout_prob=self.dropout_prob,
+            # visit_order_size=self.visit_order_size,
+            # hidden_dropout_prob=self.dropout_prob,
         )
         # Initialize weights and apply final processing
         self.post_init()
 
         # Mamba has its own initialization
         self.model = MambaForCausalLM(config=self.config)
+        
+        # classifier mamba
+        self.classifier_mamba = MambaClassificationHead(config=self.config)
+
+        # classifier transformer
+        self.classifier_transformer = nn.Linear(
+            self.embedding_size, self.num_labels
+        )
 
     def _init_weights(self, module: torch.nn.Module) -> None:
         """Initialize the weights."""
@@ -167,12 +184,21 @@ class MambaPretrain(pl.LightningModule):
         # if labels is None:
         #     labels = concept_ids
 
-        return self.model(
+        output = self.model(
             inputs_embeds=inputs_embeds,
-            labels=labels,
+            labels=None,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
         )
+
+        predictions = output.logits
+
+        predictions = np.squeeze(predictions, axis=0)
+        logits_mamba = self.classifier_mamba(predictions)
+        classified_transformer = self.classifier_transformer(predictions)
+        # print("Mamba: ", logits_mamba[0:3])
+        # print("Transformer: ", classified_transformer[0:3])
+        return logits_mamba
 
     def training_step(self, batch: Dict[str, Any], batch_idx: int) -> Any:
         """Train model on training dataset."""
