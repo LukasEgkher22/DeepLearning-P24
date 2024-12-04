@@ -1,0 +1,9 @@
+split_1
+split_2
+split_3
+split_4
+split_5
+Output/
+venv/
+MAMBA/data_merged.csv
+__pycache__/

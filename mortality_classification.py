@@ -4,7 +4,8 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import tqdm
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
+import random
 from torch import nn
 from sklearn import metrics
 import json
@@ -15,7 +16,16 @@ from models.early_stopper import EarlyStopping
 from models.deep_set_attention import DeepSetAttentionModel
 from models.grud import GRUDModel
 from models.ip_nets import InterpolationPredictionModel
+from torch.nn.utils.rnn import pad_sequence
 
+# extra imports
+from odyssey.models.ehr_mamba.model import MambaPretrain
+from typing import Tuple
+
+def get_subset(dataset, fraction):
+    subset_size = max(1, int(len(dataset) * fraction))  # At least one item
+    indices = random.sample(range(len(dataset)), subset_size)  # Randomly sample indices
+    return Subset(dataset, indices)
 
 def train_test(
     train_pair,
@@ -36,6 +46,17 @@ def train_test(
     train_collate_fn = PairedDataset.paired_collate_fn_truncate
     val_test_collate_fn = MortalityDataset.non_pair_collate_fn_truncate
 
+    # Create subsets for debugging
+    # debug_fraction = 0.01
+    # debug_train_pair = get_subset(train_pair, debug_fraction)
+    # debug_test_data = get_subset(test_data, debug_fraction)
+    # debug_val_data = get_subset(val_data, debug_fraction)
+
+    # # Define DataLoaders with subsets
+    # train_dataloader = DataLoader(debug_train_pair, train_batch_size, shuffle=True, num_workers=16, collate_fn=train_collate_fn, pin_memory=True)
+    # test_dataloader = DataLoader(debug_test_data, batch_size, shuffle=True, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
+    # val_dataloader = DataLoader(debug_val_data, batch_size, shuffle=False, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
+    
     train_dataloader = DataLoader(train_pair, train_batch_size, shuffle=True, num_workers=16, collate_fn=train_collate_fn, pin_memory=True)
     test_dataloader = DataLoader(test_data, batch_size, shuffle=True, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
     val_dataloader = DataLoader(val_data, batch_size, shuffle=False, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
@@ -128,6 +149,11 @@ def train(
             return_intermediates=False,
             **model_args
         )
+    elif model_type == "mamba":
+        model = MambaPretrain(
+            sensor_count = sensor_count,
+            static_dim = static_size
+        )
     model_parameters = filter(lambda p: p.requires_grad, model.parameters())
     params = sum([np.prod(p.size()) for p in model_parameters])
     print(f"# of trainable parameters: {params}")
@@ -145,7 +171,8 @@ def train(
         train_log.write(
             ",".join(["epoch", "train_loss", "val_loss", "val_roc_auc_score"]) + "\n"
         )
-
+    
+    i = 0
     for epoch in range(epochs):
 
         # training step
@@ -159,23 +186,30 @@ def train(
                 times = times.to(device)
                 mask = mask.to(device)
                 delta = delta.to(device)
+        
+            if model_type == "mamba":
+                data = [data, labels]
 
             optimizer.zero_grad()
-
+            
             predictions = model(
                 x=data, static=static, time=times, sensor_mask=mask, delta=delta
             )
-            if type(predictions) == tuple:
-                predictions, recon_loss = predictions
-            else:
+            if model_type != "mamba":
+                if type(predictions) == tuple:
+                    predictions, recon_loss = predictions
+                else:
+                    recon_loss = 0
+                predictions = predictions.squeeze(-1)
+            else: 
                 recon_loss = 0
-            predictions = predictions.squeeze(-1)
             loss = criterion(predictions.cpu(), labels) + recon_loss
+            
             loss_list.append(loss.item())
             loss.backward()
             optimizer.step()
         accum_loss = np.mean(loss_list)
-
+        print("First epoch done.")
         # validation step
         model.eval().to(device)
         labels_list = torch.LongTensor([])
@@ -190,12 +224,16 @@ def train(
                     times = times.to(device)
                     mask = mask.to(device)
                     delta = delta.to(device)
+                
+                if model_type == "mamba":
+                    data = [data, labels]
                 predictions = model(
                     x=data, static=static, time=times, sensor_mask=mask, delta=delta
                 )
-                if type(predictions) == tuple:
-                    predictions, _ = predictions
-                predictions = predictions.squeeze(-1)
+                if model_type != "mamba":
+                    if type(predictions) == tuple:
+                        predictions, _ = predictions
+                    predictions = predictions.squeeze(-1)
                 predictions_list = torch.cat(
                     (predictions_list, predictions.cpu()), dim=0
                 )
@@ -277,12 +315,15 @@ def test(
                 times = times.to(device)
                 mask = mask.to(device)
                 delta = delta.to(device)
+            if model_type == "mamba":
+                data = [data, labels]
             predictions = model(
                 x=data, static=static, time=times, sensor_mask=mask, delta=delta
             )
-            if type(predictions) == tuple:
-                predictions, _ = predictions
-            predictions = predictions.squeeze(-1)
+            if model_type != "mamba":
+                if type(predictions) == tuple:
+                    predictions, _ = predictions
+                predictions = predictions.squeeze(-1)
             predictions_list = torch.cat((predictions_list, predictions.cpu()), dim=0)
     loss = criterion(predictions_list.cpu(), labels_list)
     print(f"Test Loss: {loss}")
