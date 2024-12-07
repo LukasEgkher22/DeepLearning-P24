@@ -7,3 +7,4 @@ Output/
 venv/
 MAMBA/data_merged.csv
 __pycache__/
+sumbit_model_run.sh
