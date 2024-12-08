@@ -1,6 +1,7 @@
 venv/
 __pycache__/
-P12data/
+submit_model_run.sh
+*.gz
 *.h5
-*.sh
+*.npy
 
