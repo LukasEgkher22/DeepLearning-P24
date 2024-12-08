@@ -1,10 +1,6 @@
-split_1
-split_2
-split_3
-split_4
-split_5
-Output/
 venv/
-MAMBA/data_merged.csv
 __pycache__/
-sumbit_model_run.sh
+P12data/
+*.h5
+*.sh
+

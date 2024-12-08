@@ -47,19 +47,19 @@ def train_test(
     val_test_collate_fn = MortalityDataset.non_pair_collate_fn_truncate
 
     # Create subsets for debugging
-    # debug_fraction = 0.01
-    # debug_train_pair = get_subset(train_pair, debug_fraction)
-    # debug_test_data = get_subset(test_data, debug_fraction)
-    # debug_val_data = get_subset(val_data, debug_fraction)
+    debug_fraction = 0.03
+    debug_train_pair = get_subset(train_pair, debug_fraction)
+    debug_test_data = get_subset(test_data, debug_fraction)
+    debug_val_data = get_subset(val_data, debug_fraction)
 
-    # # Define DataLoaders with subsets
-    # train_dataloader = DataLoader(debug_train_pair, train_batch_size, shuffle=True, num_workers=16, collate_fn=train_collate_fn, pin_memory=True)
-    # test_dataloader = DataLoader(debug_test_data, batch_size, shuffle=True, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
-    # val_dataloader = DataLoader(debug_val_data, batch_size, shuffle=False, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
+    # Define DataLoaders with subsets
+    train_dataloader = DataLoader(debug_train_pair, train_batch_size, shuffle=True, num_workers=16, collate_fn=train_collate_fn, pin_memory=True)
+    test_dataloader = DataLoader(debug_test_data, batch_size, shuffle=True, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
+    val_dataloader = DataLoader(debug_val_data, batch_size, shuffle=False, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
     
-    train_dataloader = DataLoader(train_pair, train_batch_size, shuffle=True, num_workers=16, collate_fn=train_collate_fn, pin_memory=True)
-    test_dataloader = DataLoader(test_data, batch_size, shuffle=True, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
-    val_dataloader = DataLoader(val_data, batch_size, shuffle=False, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
+    # train_dataloader = DataLoader(train_pair, train_batch_size, shuffle=True, num_workers=16, collate_fn=train_collate_fn, pin_memory=True)
+    # test_dataloader = DataLoader(test_data, batch_size, shuffle=True, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
+    # val_dataloader = DataLoader(val_data, batch_size, shuffle=False, num_workers=16, collate_fn=val_test_collate_fn, pin_memory=True)
 
     # assign GPU
     if torch.cuda.is_available():
@@ -209,7 +209,6 @@ def train(
             loss.backward()
             optimizer.step()
         accum_loss = np.mean(loss_list)
-        print("First epoch done.")
         # validation step
         model.eval().to(device)
         labels_list = torch.LongTensor([])
@@ -341,8 +340,8 @@ def test(
     auprc_score = metrics.average_precision_score(labels_list, probs[:, 1])
     accuracy_score = metrics.accuracy_score(labels_list, np.argmax(probs, axis=1))
 
-    print(results)
-    print(cm)
+    # print(results)
+    # print(cm)
     print(f"Accuracy = {accuracy_score}")
     print(f"AUPRC = {auprc_score}")
     print(f"AUROC = {auc_score}")
