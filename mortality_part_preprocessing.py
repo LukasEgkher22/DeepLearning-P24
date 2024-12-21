@@ -20,7 +20,12 @@ def truncate_to_longest_item_in_batch(data, times, mask, delta):
     return data, times, mask, delta
 
 
-def load_pad_separate(dataset_id, base_path="", split_index=1, save_path="./processed_datasets"):
+def load_pad_separate(
+        dataset_id,
+        base_path="",
+        split_index=1,
+        save_path="./processed_datasets",
+        load_from_preprocessed=True):
     """
     loads, zero pads, and separates data preprocessed by SeFT
 
@@ -42,7 +47,7 @@ def load_pad_separate(dataset_id, base_path="", split_index=1, save_path="./proc
     test_path = os.path.join(save_path, f"{dataset_id}_{split_index}_test.h5")
 
     # Check if the preprocessed files already exist, and load them if they do
-    if save_path and all(os.path.exists(p) for p in [pos_path, neg_path, val_path, test_path]):
+    if save_path and load_from_preprocessed and all(os.path.exists(p) for p in [pos_path, neg_path, val_path, test_path]):
         print(f"Loading preprocessed datasets from {save_path}")
         mortality_pos = MortalityDataset(hdf5_path=pos_path)
         mortality_neg = MortalityDataset(hdf5_path=neg_path)

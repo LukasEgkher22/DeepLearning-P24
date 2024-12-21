@@ -26,6 +26,8 @@ import json
 @click.option("--layers", default=1, help="number of attention layers")
 @click.option("--dataset_id", default="physionet2012", help="filename id of dataset")
 @click.option("--base_path", default="./P12data", help="Path to data folder")
+@click.option("--number_of_splits", default=5, help="Number of splits of data for training")
+@click.option("--search_preprocessed", default=True, help="Set false if you want to preprocess the data again")
 @click.option("--lr", default=0.001, help="learning rate")
 @click.option("--patience", default=10, help="patience for early stopping")
 @click.option(
@@ -58,6 +60,8 @@ import json
 def core_function(
     output_path,
     base_path,
+    number_of_splits,
+    search_preprocessed,
     model_type,
     epochs,
     dataset_id,
@@ -79,11 +83,12 @@ def core_function(
     accum_auprc = []
     accum_auroc = []
 
-    for split_index in range(1, 6):
+    for split_index in range(1, number_of_splits+1):
 
         base_path_new = f"{base_path}/split_{split_index}"
+
         train_pair, val_data, test_data = load_pad_separate(
-            dataset_id, base_path_new, split_index
+            dataset_id, base_path_new, split_index, load_from_preprocessed=search_preprocessed
         )
 
         # make necessary folders
